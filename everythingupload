@@ -10,8 +10,7 @@ if [ ! -d ".git" ]; then
 fi
 
 # Kontrollige, kas git on installitud
-if ! command -v git &> /dev/null
-then
+if ! command -v git &> /dev/null; then
     echo "Git ei ole installitud."
     exit 1
 fi
@@ -19,12 +18,21 @@ fi
 # Lisame kõik muudatused Git-i
 git add .
 
+# Kontrollime, kas on muudatusi, mida commit'ida
+if git diff-index --quiet HEAD --; then
+    echo "Pole muudatusi commit'imiseks."
+    exit 0
+fi
+
 # Teeme commit'i
 commitMessage="Automatiseeritud üleslaadimine skriptist $(basename "$current_dir")"
 git commit -m "$commitMessage"
 
-# Lükka muudatused GitHubi (kasutame SSH autentimist)
-repoUrl="git@github.com:Adrian69420N/skriptimine.git"
-git push -uf "$repoUrl" master
+# Määrame remote repo URL-i
+repoUrl="https://github.com/Adrian69420N/winpowershell_skriptimine.git"
+
+git remote set-url origin "$repoUrl"
+
+git push -u origin master
 
 echo "Skript üles laetud GitHubi edukalt kaustast $current_dir"
