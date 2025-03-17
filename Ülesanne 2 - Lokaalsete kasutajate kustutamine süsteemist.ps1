@@ -1,3 +1,6 @@
+# Seadista PowerShelli konsooli kodeering UTF-8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
 # Küsi kasutajalt ees- ja perenimi
 $firstName = Read-Host "Sisesta kustutatava kasutaja eesnimi"
 $lastName = Read-Host "Sisesta kustutatava kasutaja perenimi"
