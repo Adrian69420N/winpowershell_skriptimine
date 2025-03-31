@@ -50,14 +50,14 @@ Write-Host "Kustutatava kasutaja kasutajanimi: $username" -ForegroundColor Cyan
 try {
     $user = Get-ADUser -Filter { SamAccountName -eq $username } -ErrorAction Stop
     Remove-ADUser -Identity $user -Confirm:$false -ErrorAction Stop
-    Write-Host "✅ Kasutaja '$username' kustutati edukalt Active Directoryst." -ForegroundColor Green
+    Write-Host "Kasutaja '$username' kustutati edukalt Active Directoryst." -ForegroundColor Green
 }
 catch {
     if ($_ -like "*cannot find an object with identity*") {
-        Write-Host "⚠️ Kasutajat '$username' ei leitud Active Directoryst." -ForegroundColor Yellow
+        Write-Host "Kasutajat '$username' ei leitud Active Directoryst." -ForegroundColor Yellow
     }
     else {
-        Write-Host "❌ Kustutamine ebaõnnestus. Veateade: $_" -ForegroundColor Red
+        Write-Host "Kustutamine ebaõnnestus. Veateade: $_" -ForegroundColor Red
     }
     exit 1
 }
