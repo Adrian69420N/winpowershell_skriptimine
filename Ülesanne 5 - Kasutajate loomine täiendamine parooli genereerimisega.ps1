@@ -8,7 +8,7 @@
     Requires Active Directory module
 #>
 
-# Import module
+# Import Active Directory module
 Import-Module ActiveDirectory -ErrorAction SilentlyContinue
 if (-not (Get-Module -Name ActiveDirectory)) {
     Write-Host "ERROR: Active Directory module could not be loaded." -ForegroundColor Red
@@ -91,7 +91,7 @@ $email = "$username@$($domain.DNSRoot)"
 $upn = "$username@$($domain.DNSRoot)"
 $ouPath = "CN=Users,$($domain.DistinguishedName)"
 
-# Create user (without ChangePasswordAtLogon)
+# Create user
 try {
     New-ADUser -Name "$firstName $lastName" `
                -GivenName $firstName `
@@ -104,7 +104,10 @@ try {
                -Path $ouPath `
                -PassThru | Out-Null
 
-    Write-Host "User '$username' created successfully." -ForegroundColor Green
+    # Ensure no password change is required at logon
+    Set-ADUser -Identity $username -ChangePasswordAtLogon $false
+
+    Write-Host "User '$username' created successfully and can log in immediately." -ForegroundColor Green
 }
 catch {
     Write-Host "ERROR: Failed to create user." -ForegroundColor Red
@@ -131,5 +134,4 @@ Write-Host "Password : $password"
 Write-Host "Email    : $email"
 Write-Host "UPN      : $upn"
 Write-Host "Saved to : $csvPath"
-Write-Host "`nUser is ready to log in immediately." -ForegroundColor Yellow
-
+Write-Host "`nUser is ready to log in without password change." -ForegroundColor Yellow
