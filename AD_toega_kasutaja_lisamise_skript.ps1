@@ -102,7 +102,7 @@ Write-Host "Generated secure password." -ForegroundColor Green
 # Prepare email & UPN
 $email = "$username@adrianv0r.ee"
 $upnSuffix = "adrianv0r.ee"
-$ouPath = "OU=Inimesed,DC=adrianv0r,DC=ee"
+$ouPath = "CN=Users,DC=adrianv0r,DC=ee"
 
 # Create the new AD user
 try {
