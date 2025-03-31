@@ -91,7 +91,7 @@ $email = "$username@$($domain.DNSRoot)"
 $upn = "$username@$($domain.DNSRoot)"
 $ouPath = "CN=Users,$($domain.DistinguishedName)"
 
-# Create user
+# Create user (without ChangePasswordAtLogon)
 try {
     New-ADUser -Name "$firstName $lastName" `
                -GivenName $firstName `
@@ -101,7 +101,6 @@ try {
                -EmailAddress $email `
                -AccountPassword $securePassword `
                -Enabled $true `
-               -ChangePasswordAtLogon $true `
                -Path $ouPath `
                -PassThru | Out-Null
 
@@ -132,4 +131,5 @@ Write-Host "Password : $password"
 Write-Host "Email    : $email"
 Write-Host "UPN      : $upn"
 Write-Host "Saved to : $csvPath"
-Write-Host "`nUser must change password at first logon." -ForegroundColor Yellow
+Write-Host "`nUser is ready to log in immediately." -ForegroundColor Yellow
+
