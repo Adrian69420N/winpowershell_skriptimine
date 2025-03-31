@@ -1,67 +1,66 @@
 <#
 .SYNOPSIS
-    Deletes an Active Directory user based on first and last name.
+    Kustutab Active Directory kasutaja ees- ja perenime alusel.
 .DESCRIPTION
-    This script asks for a user's first and last name, constructs the username,
-    and attempts to delete the user from Active Directory.
+    Loob kasutajanime (eesnime 1. täht + perenimi), kontrollib selle olemasolu ja kustutab kasutaja AD-st.
 .NOTES
-    Requires ActiveDirectory module and sufficient permissions.
+    Vajab Active Directory moodulit ja domeeniühendust.
 #>
 
-# Impordi AD moodul
+# --> UTF-8 toetus
+chcp 65001 > $null
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
+Write-Host ""
+Write-Host "=== Active Directory kasutaja kustutamine ===" -ForegroundColor Cyan
+
+# --> Kontrolli, kas AD moodul on olemas
 Import-Module ActiveDirectory -ErrorAction SilentlyContinue
 if (-not (Get-Module ActiveDirectory)) {
-    Write-Host "Viga: Active Directory moodulit ei õnnestunud laadida!" -ForegroundColor Red
+    Write-Host "[X] Viga: Active Directory moodulit ei leitud." -ForegroundColor Red
     exit 1
 }
 
-# Funktsioon täpitähtede translitereerimiseks
+# --> Translit-funktsioon (eemaldab täpitähed)
 function Convert-ToAscii {
     param ([string]$text)
     $translit = @{
         'ä' = 'a'; 'ö' = 'o'; 'ü' = 'u'; 'õ' = 'o'
         'Ä' = 'A'; 'Ö' = 'O'; 'Ü' = 'U'; 'Õ' = 'O'
     }
-    foreach ($key in $translit.Keys) {
-        $text = $text -replace $key, $translit[$key]
+    foreach ($char in $translit.Keys) {
+        $text = $text -replace $char, $translit[$char]
     }
     return $text
 }
 
-# Küsi kasutajalt ees- ja perekonnanimi
-$firstName = Read-Host "Sisesta eesnimi"
-$lastName = Read-Host "Sisesta perenimi"
+# --> Küsime ees- ja perenime
+$firstName = Read-Host "Sisesta kasutaja eesnimi"
+$lastName  = Read-Host "Sisesta kasutaja perenimi"
 
-# Kontrolli sisendi tühjust
+# --> Kontroll tühjade väljade vastu
 if ([string]::IsNullOrWhiteSpace($firstName) -or [string]::IsNullOrWhiteSpace($lastName)) {
-    Write-Host "Viga: Ees- ja perenimi ei tohi olla tühjad!" -ForegroundColor Red
+    Write-Host "[X] Viga: Ees- ja perenimi ei tohi olla tühjad!" -ForegroundColor Red
     exit 1
 }
 
-# Translit + username loomine
-$firstNameClean = Convert-ToAscii $firstName
-$lastNameClean = Convert-ToAscii $lastName
-$username = ($firstNameClean.Substring(0,1) + $lastNameClean).ToLower()
-$username = $username -replace '[^a-z0-9]', ''  # Eemalda muud märgid
+# --> Loo kasutajanimi (translit + lowercase)
+$first = Convert-ToAscii $firstName
+$last  = Convert-ToAscii $lastName
+$username = ($first.Substring(0,1) + $last).ToLower()
 
-Write-Host "Kustutatava kasutaja kasutajanimi: $username" -ForegroundColor Cyan
+Write-Host "[Info] Otsitav kasutajanimi: $username" -ForegroundColor Cyan
 
-# Proovi kasutajat leida ja kustutada
+# --> Kasutaja otsimine ja kustutamine
 try {
     $user = Get-ADUser -Filter { SamAccountName -eq $username } -ErrorAction Stop
+
+    # --> Kui kasutaja leiti, kustutame
     Remove-ADUser -Identity $user -Confirm:$false -ErrorAction Stop
-    Write-Host "Kasutaja '$username' kustutati edukalt Active Directoryst." -ForegroundColor Green
+    Write-Host "[✔] Kasutaja '$username' kustutati AD-st edukalt." -ForegroundColor Green
 }
 catch {
-    if ($_ -like "*cannot find an object with identity*") {
-        Write-Host "Kasutajat '$username' ei leitud Active Directoryst." -ForegroundColor Yellow
-    }
-    else {
-        Write-Host "Kustutamine ebaõnnestus. Veateade: $_" -ForegroundColor Red
-    }
+    Write-Host "[!] Viga: Kasutajat '$username' ei leitud või kustutamine ebaõnnestus." -ForegroundColor Yellow
+    Write-Host "Detailid: $_" -ForegroundColor DarkGray
     exit 1
 }
-
-exit 0
-
-
