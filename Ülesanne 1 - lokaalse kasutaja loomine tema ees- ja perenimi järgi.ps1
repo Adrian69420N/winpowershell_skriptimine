@@ -5,41 +5,42 @@
     Skript küsib kasutaja ees- ja perekonnanime, genereerib kasutajanime ning
     lisab lokaalse kasutaja, kui seda veel pole. Väljastab kasutajasõbraliku info.
 .NOTES
-    Vajab administraatoriõigusi ja töötab UTF-8 konsoolis.
+    Vajab administraatoriõigusi ja UTF-8 tuge.
 #>
 
-# ➤ UTF-8 tugi täpitähtede jaoks
+# --> UTF-8 toetus täpitähtede jaoks
 chcp 65001 > $null
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
-Write-Host "`n=== Lokaalse kasutaja loomine ===`n" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "=== Lokaalse kasutaja loomine ===" -ForegroundColor Cyan
 
-# ➤ Küsime kasutaja ees- ja perenime
+# --> Küsi kasutaja ees- ja perenimi
 $firstName = Read-Host "Sisesta eesnimi"
 $lastName  = Read-Host "Sisesta perenimi"
 
-# ➤ Kontrollime, et mõlemad väljad on täidetud ja sisaldavad ainult ladina tähti
+# --> Kontroll: tühjus või mitte-ladina tähed
 if ([string]::IsNullOrWhiteSpace($firstName) -or [string]::IsNullOrWhiteSpace($lastName)) {
-    Write-Host "Viga: Eesnimi ja perenimi ei tohi olla tühjad!" -ForegroundColor Red
+    Write-Host "[X] Viga: Eesnimi ja perenimi ei tohi olla tühjad!" -ForegroundColor Red
     exit 1
 }
 
 if ($firstName -match "[^a-zA-Z]" -or $lastName -match "[^a-zA-Z]") {
-    Write-Host "Viga: Nimi tohib sisaldada ainult ladina tähti!" -ForegroundColor Red
+    Write-Host "[!] Viga: Nimi tohib sisaldada ainult ladina tähti!" -ForegroundColor Red
     exit 1
 }
 
-# ➤ Genereerime kasutajanime: esimene täht + perenimi (väiketähtedega)
+# --> Genereeri kasutajanimi
 $username = ($firstName.Substring(0,1) + $lastName).ToLower()
 $fullName = "$firstName $lastName"
 
-# ➤ Kontrollime, kas kasutaja on juba olemas
+# --> Kontrolli, kas kasutaja on juba olemas
 if (Get-LocalUser -Name $username -ErrorAction SilentlyContinue) {
-    Write-Host "Kasutaja '$username' on juba olemas süsteemis." -ForegroundColor Yellow
+    Write-Host "[!] Kasutaja '$username' on juba olemas." -ForegroundColor Yellow
     exit 1
 }
 
-# ➤ Proovime kasutaja lisada
+# --> Proovi kasutajat luua
 try {
     $password = ConvertTo-SecureString "Parool1!" -AsPlainText -Force
 
@@ -49,18 +50,18 @@ try {
                   -Description "Automaatne lisamine skriptiga" `
                   -ErrorAction Stop
 
-    Write-Host "Kasutaja '$username' loodud edukalt!" -ForegroundColor Green
+    Write-Host "[✔] Kasutaja '$username' loodud edukalt." -ForegroundColor Green
 }
 catch {
-    Write-Host "Viga kasutaja loomisel: $_" -ForegroundColor Red
+    Write-Host "[X] Viga kasutaja loomisel: $_" -ForegroundColor Red
     exit 1
 }
 
-# ➤ Kontrollime käsu tulemust
+# --> Edu või mitte?
 if ($?) {
-    Write-Host "`nKäsk täideti edukalt." -ForegroundColor Green
+    Write-Host "[OK] Käsk täideti edukalt." -ForegroundColor Green
 } else {
-    Write-Host "`nKäsk ebaõnnestus." -ForegroundColor Red
+    Write-Host "[X] Käsk ebaõnnestus." -ForegroundColor Red
 }
 
 exit 0
