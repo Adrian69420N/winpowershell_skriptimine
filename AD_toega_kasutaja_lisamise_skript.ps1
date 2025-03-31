@@ -33,21 +33,21 @@ function New-RandomPassword {
     $lowercase = "abcdefghiklmnoprstuvwxyz".ToCharArray()
     $numbers = "0123456789".ToCharArray()
     $special = "!@#$%^&*()_-+={}[]|\:;<>,.?/~".ToCharArray()
-    
+
     $password = @(
         $uppercase | Get-Random
         $lowercase | Get-Random
         $numbers | Get-Random
         $special | Get-Random
     )
-    
+
     $remainingLength = $length - $password.Count
     $allChars = $uppercase + $lowercase + $numbers + $special
-    
+
     for ($i = 0; $i -lt $remainingLength; $i++) {
         $password += $allChars | Get-Random
     }
-    
+
     $password = $password | Sort-Object { Get-Random }
     return -join $password
 }
@@ -57,7 +57,7 @@ function Initialize-CsvFile {
     param (
         [string]$filePath
     )
-    
+
     if (-not (Test-Path $filePath)) {
         $headers = "FirstName,LastName,Username,Password,Email,CreationTime"
         $headers | Out-File -FilePath $filePath -Encoding utf8
@@ -70,6 +70,7 @@ Write-Host "`n=== Active Directory User Creation Tool ===" -ForegroundColor Cyan
 $firstName = Read-Host -Prompt "Enter first name"
 $lastName = Read-Host -Prompt "Enter last name"
 
+# Check if inputs are not empty
 if ([string]::IsNullOrWhiteSpace($firstName) -or [string]::IsNullOrWhiteSpace($lastName)) {
     Write-Host "ERROR: First name and last name cannot be empty." -ForegroundColor Red
     exit 1
@@ -77,11 +78,11 @@ if ([string]::IsNullOrWhiteSpace($firstName) -or [string]::IsNullOrWhiteSpace($l
 
 # Generate username
 $username = ($firstName.Substring(0, 1) + $lastName).ToLower()
-$username = $username -replace '[^a-z0-9]', '' 
+$username = $username -replace '[^a-z0-9]', ''
 
 Write-Host "Generated username: $username" -ForegroundColor Cyan
 
-# Check if username already exists
+# Check if the username already exists
 try {
     $userExists = Get-ADUser -Filter {SamAccountName -eq $username} -ErrorAction Stop
     if ($userExists) {
@@ -93,16 +94,16 @@ catch {
     Write-Host "Username is available." -ForegroundColor Green
 }
 
-# Generate secure password
+# Generate password
 $password = New-RandomPassword
 $securePassword = ConvertTo-SecureString -String $password -AsPlainText -Force
 
 Write-Host "Generated secure password." -ForegroundColor Green
 
-# Prepare email & UPN
-$email = "$username@adrianv0r.ee"
-$upnSuffix = "adrianv0r.ee"
-$ouPath = "CN=Users,DC=adrianv0r,DC=ee"
+# Construct email and UPN
+$email = "$username@$($domain.DNSRoot)"
+$upnSuffix = $domain.DNSRoot
+$defaultPath = "CN=Users,$($domain.DistinguishedName)"  # CN=Users,DC=adrianv0r,DC=ee
 
 # Create the new AD user
 try {
@@ -115,7 +116,7 @@ try {
                -AccountPassword $securePassword `
                -Enabled $true `
                -ChangePasswordAtLogon $true `
-               -Path $ouPath `
+               -Path $defaultPath `
                -PassThru | Out-Null
 
     Write-Host "Successfully created user '$firstName $lastName' in Active Directory." -ForegroundColor Green
@@ -151,4 +152,3 @@ Write-Host "Password: $password" -ForegroundColor White
 Write-Host "Created: $creationTime" -ForegroundColor White
 Write-Host "`nUser must change password at next logon." -ForegroundColor Yellow
 Write-Host "`nUser creation completed successfully!" -ForegroundColor Green
-
