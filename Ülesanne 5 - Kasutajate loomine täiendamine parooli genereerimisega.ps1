@@ -1,31 +1,37 @@
 <#
 .SYNOPSIS
-    Creates a new Active Directory user account with a random password.
+    Loob uue Active Directory kasutaja koos juhuslikult genereeritud parooliga.
 .DESCRIPTION
-    Prompts for first and last name, creates AD user with a secure random password,
-    and logs credentials to a CSV file.
+    Küsib ees- ja perenime, genereerib kasutajanime ja parooli, loob AD kasutaja,
+    salvestab andmed CSV faili ning eemaldab parooli vahetamise nõude.
 .NOTES
-    Requires Active Directory module
+    Vajab AD moodulit ja administraatoriõigusi.
 #>
 
-# Import Active Directory module
+# UTF-8 toetus täpitähtede jaoks
+chcp 65001 > $null
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
+Write-Host ""
+Write-Host "=== Active Directory kasutaja loomine ===" -ForegroundColor Cyan
+
+# Impordi AD moodul
 Import-Module ActiveDirectory -ErrorAction SilentlyContinue
 if (-not (Get-Module -Name ActiveDirectory)) {
-    Write-Host "ERROR: Active Directory module could not be loaded." -ForegroundColor Red
+    Write-Host "[X] Viga: Active Directory moodulit ei õnnestunud laadida!" -ForegroundColor Red
     exit 1
 }
 
-# Connect to domain
+# Kontrolli domeeniühendust
 try {
     $domain = Get-ADDomain
-    Write-Host "Connected to domain: $($domain.DNSRoot)" -ForegroundColor Green
-}
-catch {
-    Write-Host "ERROR: Cannot connect to Active Directory domain." -ForegroundColor Red
+    Write-Host "[OK] Ühendus domeeniga: $($domain.DNSRoot)" -ForegroundColor Green
+} catch {
+    Write-Host "[X] Viga: Ei saanud domeeniga ühendust." -ForegroundColor Red
     exit 1
 }
 
-# Generate secure random password
+# Parooli genereerimise funktsioon
 function New-RandomPassword {
     $length = 12
     $upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -48,50 +54,47 @@ function New-RandomPassword {
     return ($password | Sort-Object { Get-Random }) -join ''
 }
 
-# Initialize CSV file
+# CSV faili loomine kui puudub
 function Initialize-CsvFile {
     param ([string]$filePath)
     if (-not (Test-Path $filePath)) {
         "Username,Password" | Out-File -FilePath $filePath -Encoding utf8
+        Write-Host "[OK] CSV fail loodud: $filePath" -ForegroundColor Green
     }
 }
 
-# --- User input ---
-Write-Host "`n=== Active Directory User Creation Tool ===" -ForegroundColor Cyan
-$firstName = Read-Host -Prompt "Enter first name"
-$lastName = Read-Host -Prompt "Enter last name"
+# Andmete küsimine
+$firstName = Read-Host "Sisesta eesnimi"
+$lastName = Read-Host "Sisesta perenimi"
 
 if ([string]::IsNullOrWhiteSpace($firstName) -or [string]::IsNullOrWhiteSpace($lastName)) {
-    Write-Host "ERROR: Names cannot be empty." -ForegroundColor Red
+    Write-Host "[X] Viga: Nimed ei tohi olla tühjad!" -ForegroundColor Red
     exit 1
 }
 
-# Generate username
+# Kasutajanime genereerimine
 $username = ($firstName.Substring(0, 1) + $lastName).ToLower()
-$username = $username -replace '[^a-z0-9]', '' 
+$username = $username -replace '[^a-z0-9]', ''
+Write-Host "[Info] Genereeritud kasutajanimi: $username" -ForegroundColor Cyan
 
-Write-Host "Generated username: $username" -ForegroundColor Cyan
-
-# Check if user exists
+# Kontrolli, kas kasutaja on juba olemas
 try {
     if (Get-ADUser -Filter { SamAccountName -eq $username }) {
-        Write-Host "User '$username' already exists in AD." -ForegroundColor Yellow
+        Write-Host "[!] Kasutaja '$username' on juba olemas." -ForegroundColor Yellow
         exit 0
     }
 } catch {
-    Write-Host "Username is available." -ForegroundColor Green
+    Write-Host "[OK] Kasutajanimi on saadaval." -ForegroundColor Green
 }
 
-# Generate password
+# Parool ja UPN
 $password = New-RandomPassword
 $securePassword = ConvertTo-SecureString -String $password -AsPlainText -Force
-
-# Build UPN and path
 $email = "$username@$($domain.DNSRoot)"
-$upn = "$username@$($domain.DNSRoot)"
+$upn = $email
 $ouPath = "CN=Users,$($domain.DistinguishedName)"
 
-# Create user
+# Kasutaja loomine
 try {
     New-ADUser -Name "$firstName $lastName" `
                -GivenName $firstName `
@@ -104,34 +107,32 @@ try {
                -Path $ouPath `
                -PassThru | Out-Null
 
-    # Ensure no password change is required at logon
     Set-ADUser -Identity $username -ChangePasswordAtLogon $false
 
-    Write-Host "User '$username' created successfully and can log in immediately." -ForegroundColor Green
-}
-catch {
-    Write-Host "ERROR: Failed to create user." -ForegroundColor Red
-    Write-Host "Details: $_" -ForegroundColor Red
+    Write-Host "[✔] Kasutaja '$username' lisati edukalt AD-sse." -ForegroundColor Green
+} catch {
+    Write-Host "[X] Viga kasutaja loomisel: $_" -ForegroundColor Red
     exit 1
 }
 
-# Log to CSV
+# CSV logimine
 $csvPath = Join-Path -Path $PSScriptRoot -ChildPath "kasutanimi.csv"
 Initialize-CsvFile -filePath $csvPath
 
 try {
     "$username,$password" | Out-File -FilePath $csvPath -Encoding utf8 -Append
-    Write-Host "Credentials saved to CSV: $csvPath" -ForegroundColor Green
-}
-catch {
-    Write-Host "WARNING: Could not save to CSV file." -ForegroundColor Yellow
+    Write-Host "[OK] Kasutaja andmed salvestatud CSV faili: $csvPath" -ForegroundColor Green
+} catch {
+    Write-Host "[!] Viga CSV faili salvestamisel." -ForegroundColor Yellow
 }
 
-# Summary
-Write-Host "`n--- User Summary ---" -ForegroundColor Cyan
-Write-Host "Username : $username"
-Write-Host "Password : $password"
-Write-Host "Email    : $email"
-Write-Host "UPN      : $upn"
-Write-Host "Saved to : $csvPath"
-Write-Host "`nUser is ready to log in without password change." -ForegroundColor Yellow
+# Kokkuvõte
+Write-Host ""
+Write-Host "--- Kokkuvõte ---" -ForegroundColor Cyan
+Write-Host "Nimi       : $firstName $lastName"
+Write-Host "Kasutajanimi : $username"
+Write-Host "Parool     : $password"
+Write-Host "Email      : $email"
+Write-Host "UPN        : $upn"
+Write-Host ""
+Write-Host "[Valmis] Kasutaja saab kohe sisse logida, parooli vahetus pole nõutud." -ForegroundColor Yellow
