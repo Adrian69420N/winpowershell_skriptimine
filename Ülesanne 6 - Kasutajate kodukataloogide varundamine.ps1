@@ -38,13 +38,13 @@ foreach ($user in $users) {
             }
 
             Compress-Archive -Path $userProfile -DestinationPath $zipPath -Force
-            Write-Host "✅ Varundatud: $userName -> $zipName" -ForegroundColor Cyan
+            Write-Host "Varundatud: $userName -> $zipName" -ForegroundColor Cyan
         } catch {
-            Write-Host "❌ Viga varundamisel: $userName" -ForegroundColor Red
+            Write-Host "Viga varundamisel: $userName" -ForegroundColor Red
             Write-Host "Veateade: $_" -ForegroundColor Yellow
         }
     } else {
-        Write-Host "⚠️  Kodukataloogi ei leitud: $userProfile" -ForegroundColor DarkYellow
+        Write-Host "Kodukataloogi ei leitud: $userProfile" -ForegroundColor DarkYellow
     }
 }
 
